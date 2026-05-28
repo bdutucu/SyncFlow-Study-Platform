@@ -1,0 +1,64 @@
+version: "3.9"
+
+# SYNCFLOW — full-stack Docker Compose
+#
+# Usage:
+#   docker compose up --build        # first run (builds the image + runs migrations)
+#   docker compose up                # subsequent runs
+#   docker compose down              # stop containers
+#   docker compose down -v           # stop + wipe the database volume
+#
+# Environment:
+#   Copy .env.example to .env and fill in JWT_ACCESS_SECRET and
+#   JWT_REFRESH_SECRET before running. The compose file reads those
+#   two values from .env on the host (env_file directive below).
+#   All other variables are set inline here and override .env.
+
+services:
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: syncflow
+      POSTGRES_PASSWORD: syncflow
+      POSTGRES_DB: syncflow
+    ports:
+      # Mapped to 5433 on the host to avoid clashing with a native
+      # Postgres install that may already occupy 5432.
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U syncflow -d syncflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── SYNCFLOW app ───────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy   # waits for Postgres health check to pass
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://syncflow:syncflow@db:5432/syncflow
+      PORT: 3000
+      BCRYPT_COST: 10
+      NODE_ENV: production
+    # JWT secrets are read from your .env file on the host.
+    # Only these two are pulled in; DATABASE_URL above overrides any
+    # DATABASE_URL that might be in .env so it always points to the
+    # compose db service.
+    env_file:
+      - .env
+
+volumes:
+  pgdata:
+    driver: local

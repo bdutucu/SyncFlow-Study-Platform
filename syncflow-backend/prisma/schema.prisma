@@ -1,0 +1,153 @@
+// SYNCFLOW Prisma schema — complete entity model from DSD §3.4.1.
+// Adds BanRecord for the Admin Moderation module (DSD §3.2.6).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STANDARD
+  SYSTEM_ADMIN
+}
+
+enum RoomVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  LEFT
+  KICKED
+}
+
+enum TimerPhase {
+  WORK
+  SHORT_BREAK
+  LONG_BREAK
+}
+
+enum BanAction {
+  BAN
+  UNBAN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  role         UserRole @default(STANDARD)
+  isBanned     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hostedRooms  Room[]           @relation("HostedRooms")
+  memberships  RoomMembership[]
+  focusStats   FocusStat[]
+  chatMessages ChatMessage[]    @relation("AuthoredMessages")
+
+  // Two relations to BanRecord: as the target of bans, and as the admin
+  // who issued bans (useful for moderator audit views).
+  banRecords BanRecord[] @relation("BannedUser")
+  issuedBans BanRecord[] @relation("BanAdmin")
+
+  @@map("users")
+}
+
+model Room {
+  id              String         @id @default(uuid())
+  name            String
+  description     String?
+  hostId          String
+  host            User           @relation("HostedRooms", fields: [hostId], references: [id])
+  visibility      RoomVisibility @default(PUBLIC)
+  passwordHash    String?
+  maxParticipants Int            @default(10)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  memberships  RoomMembership[]
+  focusStats   FocusStat[]
+  chatMessages ChatMessage[]
+
+  @@index([visibility, createdAt])
+  @@map("rooms")
+}
+
+model RoomMembership {
+  id       String           @id @default(uuid())
+  userId   String
+  user     User             @relation(fields: [userId], references: [id])
+  roomId   String
+  room     Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  status   MembershipStatus @default(ACTIVE)
+  joinedAt DateTime         @default(now())
+  leftAt   DateTime?
+
+  @@unique([userId, roomId])
+  @@index([roomId, status])
+  @@index([userId, status])
+  @@map("room_memberships")
+}
+
+model FocusStat {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+  roomId     String?
+  room       Room?      @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  phase      TimerPhase
+  durationMs Int
+  startedAt  DateTime
+  endedAt    DateTime
+  createdAt  DateTime   @default(now())
+
+  @@index([userId, endedAt])
+  @@index([roomId, endedAt])
+  @@map("focus_stats")
+}
+
+model ChatMessage {
+  id          String    @id @default(uuid())
+  roomId      String
+  room        Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation("AuthoredMessages", fields: [authorId], references: [id])
+  content     String    @db.VarChar(2000)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+  deletedById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([roomId, createdAt])
+  @@map("chat_messages")
+}
+
+/// BanRecord — audit log of administrative ban / unban actions
+/// (DSD §3.2.6, §3.4.1).
+///
+/// We keep both BAN and UNBAN events in the same table, so a user's
+/// moderation history is a single chronological query. The
+/// User.isBanned flag is the live state, kept atomically consistent
+/// with the latest BanRecord via the repository's transactional
+/// applyBan / applyUnban methods.
+model BanRecord {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation("BannedUser", fields: [userId], references: [id])
+  adminId   String
+  admin     User      @relation("BanAdmin",   fields: [adminId], references: [id])
+  action    BanAction
+  reason    String?   @db.VarChar(500)
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([adminId, createdAt])
+  @@map("ban_records")
+}

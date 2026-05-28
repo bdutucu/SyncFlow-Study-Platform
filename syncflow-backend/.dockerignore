@@ -1,0 +1,18 @@
+# Never copy these into the Docker build context
+node_modules
+dist
+.env
+.git
+.gitignore
+*.log
+npm-debug.log*
+
+# Test files have no place in a production image
+**/*.test.ts
+jest.config.js
+jest.setup.ts
+
+# Editor artefacts
+.vscode
+.idea
+*.swp
