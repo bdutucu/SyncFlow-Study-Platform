@@ -158,15 +158,20 @@ docker compose up -d db
 # 2. .env should contain (already does by default):
 #    DATABASE_URL=postgresql://syncflow:syncflow@localhost:5433/syncflow
 
-# 3. Generate Prisma client + apply migrations on first run
+# 3. Generate Prisma client + apply schema on first run
 npx prisma generate
-npx prisma migrate dev
+npx prisma db push
 
-# 4. Run the app with hot reload
+# 4. (Optional but recommended for demos) populate the database
+npx prisma db seed     # see ../DEMO_CREDENTIALS.md
+
+# 5. Run the app with hot reload
 npm run dev
 ```
 
 The app listens on `http://localhost:3000`. Restart it any time with Ctrl+C; the Postgres container keeps running.
+
+The seed script is idempotent — running it twice updates the seeded rows rather than duplicating. It's scoped to its own row IDs (`seed-*`) so it never touches accounts or rooms created through the UI.
 
 ### Option C — Fully manual (Node + native Postgres)
 
