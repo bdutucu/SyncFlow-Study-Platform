@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './auth-store';
+import { forceLogoutBanned } from './api';
 
 let socket: Socket | null = null;
 
@@ -10,6 +11,15 @@ export function getSocket(): Socket {
       autoConnect: false,
       transports: ['websocket'],
       auth: { token },
+    });
+    // When the server rejects (re)connect — most importantly because the
+    // user was just banned — terminate the local session. The server
+    // throws the literal string 'UNAUTHENTICATED' from the auth
+    // middleware after re-checking ban status on every connect.
+    socket.on('connect_error', (err) => {
+      if (err?.message === 'UNAUTHENTICATED') {
+        forceLogoutBanned(null);
+      }
     });
   } else {
     socket.auth = { token };

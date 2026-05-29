@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../lib/api';
 import { useAuth } from '../lib/auth-store';
 import type { AuthResult } from '../lib/types';
@@ -7,6 +7,10 @@ import type { AuthResult } from '../lib/types';
 type Mode = 'login' | 'register';
 
 export function AuthPage() {
+  const [params, setParams] = useSearchParams();
+  const bannedNotice = params.get('banned') === '1';
+  const bannedReason = params.get('reason');
+
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -15,6 +19,13 @@ export function AuthPage() {
   const [busy, setBusy] = useState(false);
   const setSession = useAuth((s) => s.setSession);
   const nav = useNavigate();
+
+  const dismissBanned = () => {
+    const next = new URLSearchParams(params);
+    next.delete('banned');
+    next.delete('reason');
+    setParams(next, { replace: true });
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +83,27 @@ export function AuthPage() {
       {/* RIGHT — form */}
       <section className="px-8 sm:px-14 py-12 lg:py-20 flex items-center">
         <div className="w-full max-w-sm mx-auto">
+          {bannedNotice && (
+            <div className="mb-6 border-l-4 border-focus bg-focus/10 pl-4 pr-3 py-3 relative animate-rise">
+              <button
+                onClick={dismissBanned}
+                className="absolute top-2 right-2 eyebrow hover:text-ink"
+                aria-label="dismiss"
+              >
+                ×
+              </button>
+              <div className="eyebrow text-focus-deep mb-1">Account banned</div>
+              <div className="font-italic italic text-ink-soft text-sm leading-snug">
+                You have been removed from the platform by a moderator.
+              </div>
+              {bannedReason && (
+                <div className="mt-2 text-sm">
+                  <span className="eyebrow">Reason · </span>
+                  <span className="text-ink">{bannedReason}</span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-baseline justify-between">
             <span className="eyebrow">{mode === 'login' ? 'Sign in' : 'Create account'}</span>
             <button

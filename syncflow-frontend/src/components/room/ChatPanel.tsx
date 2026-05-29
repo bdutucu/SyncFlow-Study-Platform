@@ -60,7 +60,7 @@ export function ChatPanel({ roomId, initialMessages }: Props) {
   };
 
   return (
-    <div className="card-paper flex flex-col h-[520px]">
+    <div className="card-paper flex flex-col h-[520px] min-w-0">
       <div className="px-5 py-3 border-b border-ink/15 flex items-baseline justify-between">
         <div>
           <div className="eyebrow">§ Chalkboard</div>
@@ -69,7 +69,7 @@ export function ChatPanel({ roomId, initialMessages }: Props) {
         <span className="font-mono text-[10px] text-ink-muted">{messages.length} msg</span>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-w-0">
         {messages.length === 0 ? (
           <div className="text-ink-muted font-italic italic text-sm">Silence. Be the first to speak.</div>
         ) : (
@@ -92,7 +92,7 @@ export function ChatPanel({ roomId, initialMessages }: Props) {
                 {m.isDeleted ? (
                   <div className="text-ink-muted font-italic italic">— message redacted —</div>
                 ) : (
-                  <div className="text-ink-soft leading-snug whitespace-pre-wrap break-words">{m.content}</div>
+                  <div className="text-ink-soft leading-snug whitespace-pre-wrap [overflow-wrap:anywhere]">{m.content}</div>
                 )}
               </div>
             );
