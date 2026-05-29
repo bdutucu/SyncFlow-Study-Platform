@@ -182,6 +182,17 @@ export class RoomService {
     const room = await this.rooms.findById(roomId);
     if (!room) throw new RoomNotFoundError();
 
+    // 0. Live ban check — DSD §3.5.5 trade-off says REST middleware skips
+    //    the DB hit, but `joinRoom` is THE common path a banned user
+    //    would take to "come back" with their still-valid 15-min JWT.
+    //    Catch them here so the ban feels truly immediate.
+    const fresh = await this.users.findById(actor.id);
+    if (fresh?.isBanned) {
+      // Lazy import to avoid a circular dep at module load.
+      const { AccountBannedError } = await import('../auth/auth.errors');
+      throw new AccountBannedError();
+    }
+
     // 1. Single-active-room enforcement.
     const existingActive = await this.rooms.findActiveMembershipByUser(actor.id);
     if (existingActive && existingActive.roomId !== roomId) {

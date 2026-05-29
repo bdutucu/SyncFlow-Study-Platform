@@ -1,5 +1,6 @@
 import { UserRole } from '@prisma/client';
 import { IUserRepository } from '../../repositories/interfaces/IUserRepository';
+import { IBanRecordRepository } from '../../repositories/interfaces/IBanRecordRepository';
 import { hashPassword, verifyPassword, dummyCompare } from '../../shared/password';
 import {
   signAccessToken,
@@ -38,7 +39,27 @@ import { User } from '@prisma/client';
  * for the auth surface.
  */
 export class AuthService {
-  constructor(private readonly users: IUserRepository) {}
+  constructor(
+    private readonly users: IUserRepository,
+    /** Optional — only used to surface the ban reason in error responses. */
+    private readonly bans?: IBanRecordRepository,
+  ) {}
+
+  /**
+   * Return the reason recorded on the user's most recent BAN action (if
+   * any). Used to enrich AccountBannedError so the login screen can show
+   * the user WHY they're locked out.
+   */
+  private async latestBanReason(userId: string): Promise<string | null> {
+    if (!this.bans) return null;
+    try {
+      const records = await this.bans.listForUser(userId, { limit: 5 });
+      const latestBan = records.find((r) => r.action === 'BAN');
+      return latestBan?.reason ?? null;
+    } catch {
+      return null;
+    }
+  }
 
   async register(input: RegisterInput): Promise<AuthResult> {
     // Check uniqueness in parallel — neither query depends on the other.
@@ -76,7 +97,9 @@ export class AuthService {
     const passwordOk = await verifyPassword(input.password, user.passwordHash);
     if (!passwordOk) throw new InvalidCredentialsError();
 
-    if (user.isBanned) throw new AccountBannedError();
+    if (user.isBanned) {
+      throw new AccountBannedError(await this.latestBanReason(user.id));
+    }
 
     return {
       user: this.toPublicUser(user),
@@ -98,7 +121,9 @@ export class AuthService {
 
     const user = await this.users.findById(payload.sub);
     if (!user) throw new InvalidOrExpiredTokenError('User no longer exists');
-    if (user.isBanned) throw new AccountBannedError();
+    if (user.isBanned) {
+      throw new AccountBannedError(await this.latestBanReason(user.id));
+    }
 
     return this.issueTokens(user.id, user.role);
   }
@@ -110,7 +135,9 @@ export class AuthService {
   async resolveAuthenticatedUser(userId: string): Promise<AuthenticatedUser> {
     const user = await this.users.findById(userId);
     if (!user) throw new InvalidOrExpiredTokenError('User no longer exists');
-    if (user.isBanned) throw new AccountBannedError();
+    if (user.isBanned) {
+      throw new AccountBannedError(await this.latestBanReason(userId));
+    }
     return { id: user.id, role: user.role };
   }
 

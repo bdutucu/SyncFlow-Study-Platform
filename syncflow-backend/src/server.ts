@@ -68,8 +68,9 @@ const io = new IOServer(httpServer, {
 // All DSD §3.2 components are now in place.
 // ---------------------------------------------------------------------------
 
-// Auth (DSD §3.2.1)
-const authService = new AuthService(userRepository);
+// Auth (DSD §3.2.1) — banRecordRepository is passed so error responses
+// can include the latest ban reason on the login screen.
+const authService = new AuthService(userRepository, banRecordRepository);
 const authController = new AuthController(authService);
 
 // Rooms (DSD §3.2.2)
@@ -169,8 +170,14 @@ app.use((_req: Request, res: Response) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof HttpError) {
+    // Surface the optional ban reason carried by AccountBannedError so
+    // the client can render it on the login screen.
+    const extra: Record<string, unknown> = {};
+    if ('reason' in err && (err as { reason?: unknown }).reason !== undefined) {
+      extra.reason = (err as { reason?: unknown }).reason;
+    }
     res.status(err.status).json({
-      error: { message: err.message, code: err.code },
+      error: { message: err.message, code: err.code, ...extra },
     });
     return;
   }
