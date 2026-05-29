@@ -1,10 +1,13 @@
 import { z } from 'zod';
-import { RoomVisibility } from '@prisma/client';
+import { RoomVisibility, RoomTag } from '@prisma/client';
 
 export const createRoomSchema = z.object({
   name: z.string().trim().min(3, 'Name must be at least 3 characters').max(80),
   description: z.string().trim().max(500).nullish().transform((v) => v ?? null),
   visibility: z.nativeEnum(RoomVisibility).default(RoomVisibility.PUBLIC),
+  // Optional in the wire schema so old clients that don't know about
+  // tags still validate; defaulted to STUDY at the service layer.
+  tag: z.nativeEnum(RoomTag).optional(),
   password: z.string().min(4).max(128).nullish().transform((v) => v ?? null),
   maxParticipants: z
     .number()
@@ -19,6 +22,7 @@ export const updateRoomSchema = z
     name: z.string().trim().min(3).max(80).optional(),
     description: z.string().trim().max(500).nullable().optional(),
     visibility: z.nativeEnum(RoomVisibility).optional(),
+    tag: z.nativeEnum(RoomTag).optional(),
     /**
      * Password handling on update:
      *   • null     → remove the password (room becomes open)
@@ -38,6 +42,8 @@ export const listRoomsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().trim().min(1).max(80).optional(),
+  /** Optional filter chip from the lobby. Multiple values not supported yet. */
+  tag: z.nativeEnum(RoomTag).optional(),
 });
 
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;

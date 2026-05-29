@@ -25,6 +25,7 @@ export class RoomRepository implements IRoomRepository {
           description: data.description,
           hostId: data.hostId,
           visibility: data.visibility,
+          tag: data.tag,
           passwordHash: data.passwordHash,
           maxParticipants: data.maxParticipants,
         },
@@ -45,9 +46,10 @@ export class RoomRepository implements IRoomRepository {
   }
 
   async listPublic(options: ListPublicOptions): Promise<PagedRooms> {
-    const { page, pageSize, search } = options;
+    const { page, pageSize, search, tag } = options;
     const where = {
       visibility: 'PUBLIC' as const,
+      ...(tag ? { tag } : {}),
       ...(search
         ? {
             OR: [

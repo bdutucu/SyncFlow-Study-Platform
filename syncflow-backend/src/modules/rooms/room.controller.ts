@@ -36,6 +36,7 @@ export class RoomController {
         name: input.name,
         description: input.description ?? null,
         visibility: input.visibility ?? 'PUBLIC',
+        tag: input.tag ?? 'STUDY',
         password: input.password ?? null,
         maxParticipants: input.maxParticipants ?? 10,
       });
@@ -52,6 +53,7 @@ export class RoomController {
         page: query.page ?? 1,
         pageSize: query.pageSize ?? 20,
         search: query.search,
+        tag: query.tag,
       });
       res.status(200).json(result);
     } catch (err) {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '../lib/api';
-import type { PagedRooms, RoomDetails, RoomSummary } from '../lib/types';
+import type { PagedRooms, RoomDetails, RoomSummary, RoomTag } from '../lib/types';
+import { ROOM_TAGS, ROOM_TAG_LABEL } from '../lib/types';
 import { useAuth } from '../lib/auth-store';
 
 export function LobbyPage() {
@@ -11,12 +12,16 @@ export function LobbyPage() {
   const [activeRoom, setActiveRoom] = useState<RoomSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  /** null = "all tags"; otherwise filter chip is active. */
+  const [tagFilter, setTagFilter] = useState<RoomTag | null>(null);
 
   const refresh = async () => {
     setLoading(true);
     try {
       const [listRes, activeRes] = await Promise.all([
-        api.get<PagedRooms>('/rooms', { params: { pageSize: 50 } }),
+        api.get<PagedRooms>('/rooms', {
+          params: { pageSize: 50, ...(tagFilter ? { tag: tagFilter } : {}) },
+        }),
         api.get<{ room: RoomSummary | null }>('/rooms/me/active'),
       ]);
       setRooms(listRes.data.items);
@@ -28,7 +33,7 @@ export function LobbyPage() {
     }
   };
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => { void refresh(); }, [tagFilter]);
 
   const leaveActive = async () => {
     if (!activeRoom) return;
@@ -47,6 +52,7 @@ export function LobbyPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC');
+  const [tag, setTag] = useState<RoomTag>('STUDY');
   const [password, setPassword] = useState('');
   const [maxParticipants, setMaxParticipants] = useState(10);
   const [creating, setCreating] = useState(false);
@@ -64,6 +70,7 @@ export function LobbyPage() {
         name: name.trim(),
         description: description.trim() || null,
         visibility,
+        tag,
         maxParticipants,
       };
       if (password.trim()) body.password = password;
@@ -135,6 +142,7 @@ export function LobbyPage() {
               <div className="min-w-0">
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <span className="eyebrow text-focus-deep">in session</span>
+                  <TagPill tag={activeRoom.tag} />
                   {activeRoom.hostId === user.id && <span className="eyebrow">host</span>}
                   {activeRoom.hasPassword && <span className="eyebrow">🔒 locked</span>}
                 </div>
@@ -205,7 +213,22 @@ export function LobbyPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="label-num">05 · Password (optional)</label>
+              <label className="label-num">05 · Kind of room</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {ROOM_TAGS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTag(t)}
+                    className={'btn btn-sm ' + (tag === t ? 'btn-ink' : 'btn-ghost')}
+                  >
+                    {ROOM_TAG_LABEL[t].toLowerCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label-num">06 · Password (optional)</label>
               <input
                 type="password"
                 className="field"
@@ -249,7 +272,37 @@ export function LobbyPage() {
           )}
         </div>
       </div>
-      <div className="rule-double mb-6" />
+      <div className="rule-double mb-4" />
+
+      {/* TAG FILTER CHIPS */}
+      <div className="mb-6 flex items-baseline gap-3 flex-wrap">
+        <span className="eyebrow">Filter</span>
+        <button
+          onClick={() => setTagFilter(null)}
+          className={
+            'px-3 py-1.5 border font-mono text-[10px] uppercase tracking-[0.18em] ' +
+            (tagFilter === null
+              ? 'border-ink bg-ink text-paper'
+              : 'border-ink/30 text-ink-muted hover:text-ink hover:border-ink/60')
+          }
+        >
+          all
+        </button>
+        {ROOM_TAGS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTagFilter(t === tagFilter ? null : t)}
+            className={
+              'px-3 py-1.5 border font-mono text-[10px] uppercase tracking-[0.18em] ' +
+              (tagFilter === t
+                ? 'border-ink bg-ink text-paper'
+                : 'border-ink/30 text-ink-muted hover:text-ink hover:border-ink/60')
+            }
+          >
+            {ROOM_TAG_LABEL[t].toLowerCase()}
+          </button>
+        ))}
+      </div>
 
       {err && (
         <div className="border-l-2 border-focus pl-3 py-1 text-sm text-focus-deep font-italic italic mb-4">
@@ -313,6 +366,7 @@ function RoomRow({
           <span className="font-display text-xl group-hover:text-focus transition-colors">
             {room.name}
           </span>
+          <TagPill tag={room.tag} />
           {room.hasPassword && <span className="eyebrow">🔒 locked</span>}
           {room.visibility === 'PRIVATE' && <span className="eyebrow">private</span>}
         </div>
@@ -347,6 +401,22 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <p className="text-ink-muted mb-6">Be the first to open a room today.</p>
       <button onClick={onCreate} className="btn-focus">Host a room</button>
     </div>
+  );
+}
+
+function TagPill({ tag }: { tag: RoomTag }) {
+  // Soft colour palette per tag so the lobby reads at a glance.
+  const cls = {
+    STUDY:       'text-focus border-focus/40 bg-focus/8',
+    CHAT:        'text-rest  border-rest/40  bg-rest/8',
+    WATCH_PARTY: 'text-ink   border-ink/40   bg-ink/8',
+  }[tag];
+  return (
+    <span className={
+      'inline-block px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-[0.18em] border ' + cls
+    }>
+      {ROOM_TAG_LABEL[tag]}
+    </span>
   );
 }
 

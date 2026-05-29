@@ -95,6 +95,7 @@ export class RoomService {
       description: input.description,
       hostId: actor.id,
       visibility: input.visibility,
+      tag: input.tag ?? 'STUDY',
       passwordHash,
       maxParticipants: input.maxParticipants,
     });
@@ -120,6 +121,7 @@ export class RoomService {
       description: room.description,
       hostId: room.hostId,
       visibility: room.visibility,
+      tag: room.tag,
       hasPassword: room.passwordHash !== null,
       maxParticipants: room.maxParticipants,
       memberCount,
@@ -131,6 +133,7 @@ export class RoomService {
     page: number;
     pageSize: number;
     search?: string;
+    tag?: import('@prisma/client').RoomTag;
   }): Promise<PagedRoomsDTO> {
     const paged = await this.rooms.listPublic(query);
     return {
@@ -143,6 +146,7 @@ export class RoomService {
         description: r.description,
         hostId: r.hostId,
         visibility: r.visibility,
+        tag: r.tag,
         hasPassword: r.passwordHash !== null,
         maxParticipants: r.maxParticipants,
         memberCount: r.memberCount,
@@ -185,6 +189,7 @@ export class RoomService {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
       ...(patch.visibility !== undefined ? { visibility: patch.visibility } : {}),
+      ...(patch.tag !== undefined ? { tag: patch.tag } : {}),
       ...(patch.maxParticipants !== undefined
         ? { maxParticipants: patch.maxParticipants }
         : {}),
@@ -388,6 +393,7 @@ export class RoomService {
       description: room.description,
       hostId: room.hostId,
       visibility: room.visibility,
+      tag: room.tag,
       hasPassword: room.passwordHash !== null,
       maxParticipants: room.maxParticipants,
       memberCount: members.length,

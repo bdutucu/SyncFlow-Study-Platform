@@ -88,6 +88,7 @@ class InMemoryRoomRepo implements IRoomRepository {
       description: data.description,
       hostId: data.hostId,
       visibility: data.visibility,
+      tag: data.tag,
       passwordHash: data.passwordHash,
       maxParticipants: data.maxParticipants,
       createdAt: now,

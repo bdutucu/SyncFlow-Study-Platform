@@ -2,6 +2,7 @@ import {
   Room,
   RoomMembership,
   RoomVisibility,
+  RoomTag,
   MembershipStatus,
 } from '@prisma/client';
 
@@ -10,6 +11,7 @@ export interface CreateRoomData {
   description: string | null;
   hostId: string;
   visibility: RoomVisibility;
+  tag: RoomTag;
   passwordHash: string | null;
   maxParticipants: number;
 }
@@ -18,6 +20,7 @@ export interface UpdateRoomData {
   name?: string;
   description?: string | null;
   visibility?: RoomVisibility;
+  tag?: RoomTag;
   passwordHash?: string | null;
   maxParticipants?: number;
 }
@@ -26,6 +29,7 @@ export interface ListPublicOptions {
   page: number;     // 1-indexed
   pageSize: number; // capped by service layer
   search?: string;
+  tag?: RoomTag;
 }
 
 /** Room enriched with the count of currently-active members. */

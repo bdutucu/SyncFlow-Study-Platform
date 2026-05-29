@@ -150,6 +150,7 @@ function makeRoom(id: string, hostId: string): Room {
     description: null,
     hostId,
     visibility: 'PUBLIC',
+    tag: 'STUDY',
     passwordHash: null,
     maxParticipants: 10,
     createdAt: new Date(),

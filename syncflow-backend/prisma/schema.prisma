@@ -37,6 +37,17 @@ enum BanAction {
   UNBAN
 }
 
+/// Predefined room categories, surfaced as filter chips in the lobby.
+/// A room has exactly one tag chosen by its host at creation time.
+/// Default STUDY keeps the legacy behaviour for rooms created before
+/// this column existed (the column is added with a DEFAULT so the
+/// migration does not need to touch any pre-existing row's data).
+enum RoomTag {
+  STUDY
+  CHAT
+  WATCH_PARTY
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -67,6 +78,7 @@ model Room {
   hostId          String
   host            User           @relation("HostedRooms", fields: [hostId], references: [id])
   visibility      RoomVisibility @default(PUBLIC)
+  tag             RoomTag        @default(STUDY)
   passwordHash    String?
   maxParticipants Int            @default(10)
   createdAt       DateTime       @default(now())
@@ -77,6 +89,7 @@ model Room {
   chatMessages ChatMessage[]
 
   @@index([visibility, createdAt])
+  @@index([tag, visibility])
   @@map("rooms")
 }
 

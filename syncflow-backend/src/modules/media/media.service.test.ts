@@ -68,7 +68,7 @@ function makeUser(id: string, role: UserRole = UserRole.STANDARD): User {
 function makeRoom(id: string, hostId: string): Room {
   return {
     id, name: `Room ${id}`, description: null, hostId,
-    visibility: 'PUBLIC', passwordHash: null, maxParticipants: 10,
+    visibility: 'PUBLIC', tag: 'STUDY', passwordHash: null, maxParticipants: 10,
     createdAt: new Date(), updatedAt: new Date(),
   };
 }

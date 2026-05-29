@@ -19,12 +19,23 @@ export interface AuthResult {
 
 export type RoomVisibility = 'PUBLIC' | 'PRIVATE';
 
+export type RoomTag = 'STUDY' | 'CHAT' | 'WATCH_PARTY';
+
+export const ROOM_TAGS: RoomTag[] = ['STUDY', 'CHAT', 'WATCH_PARTY'];
+
+export const ROOM_TAG_LABEL: Record<RoomTag, string> = {
+  STUDY: 'Study',
+  CHAT: 'Chat',
+  WATCH_PARTY: 'Watch party',
+};
+
 export interface RoomSummary {
   id: string;
   name: string;
   description: string | null;
   hostId: string;
   visibility: RoomVisibility;
+  tag: RoomTag;
   hasPassword: boolean;
   maxParticipants: number;
   memberCount: number;

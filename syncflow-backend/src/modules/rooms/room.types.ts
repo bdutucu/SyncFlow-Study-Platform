@@ -1,4 +1,4 @@
-import { RoomVisibility } from '@prisma/client';
+import { RoomVisibility, RoomTag } from '@prisma/client';
 
 /**
  * RoomLifecycleListener — an in-process hook for other modules to react
@@ -20,6 +20,7 @@ export interface RoomSummary {
   description: string | null;
   hostId: string;
   visibility: RoomVisibility;
+  tag: RoomTag;
   hasPassword: boolean;
   maxParticipants: number;
   memberCount: number;
