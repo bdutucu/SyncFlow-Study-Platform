@@ -10,6 +10,7 @@ import { TimerPanel } from '../components/room/TimerPanel';
 import { ChatPanel } from '../components/room/ChatPanel';
 import { MediaPanel } from '../components/room/MediaPanel';
 import { ParticipantList } from '../components/room/ParticipantList';
+import { VoicePanel } from '../components/room/VoicePanel';
 
 export function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -175,7 +176,7 @@ export function RoomPage() {
           <MediaPanel roomId={room.id} state={media} isHost={isHost} />
         </div>
 
-        {/* RIGHT column: members + chat */}
+        {/* RIGHT column: members + voice + chat */}
         <div className="space-y-6 min-w-0">
           <ParticipantList
             members={members}
@@ -185,6 +186,7 @@ export function RoomPage() {
             canKick={canModerate}
             onKick={(uid) => void kick(uid)}
           />
+          <VoicePanel roomId={room.id} members={members} selfUserId={user.id} />
           <ChatPanel roomId={room.id} initialMessages={chat} />
         </div>
       </div>

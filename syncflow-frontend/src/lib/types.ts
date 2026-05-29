@@ -111,3 +111,11 @@ export interface PagedAdminUsers {
   page: number;
   pageSize: number;
 }
+
+export interface VoiceToken {
+  appId: string;
+  channel: string;
+  uid: number;
+  token: string | null;
+  expiresAt: string;
+}
