@@ -96,8 +96,8 @@ class StubRoomRepo implements IRoomRepository {
   async transferHost(_: string, __: string): Promise<Room> { throw new Error('n/a'); }
   async findActiveMembershipByUser(_: string) { return null; }
   async countActiveMembers(_: string) { return 0; }
-  async activateMembership(_: string, __: string) { throw new Error('n/a'); }
-  async closeMembership(_: string, __: string, ___: 'LEFT' | 'KICKED') { throw new Error('n/a'); }
+  async activateMembership(_: string, __: string): Promise<RoomMembership> { throw new Error('n/a'); }
+  async closeMembership(_: string, __: string, ___: 'LEFT' | 'KICKED'): Promise<RoomMembership> { throw new Error('n/a'); }
 }
 
 class InMemoryFocusStatRepo implements IFocusStatRepository {
@@ -118,6 +118,13 @@ class InMemoryFocusStatRepo implements IFocusStatRepository {
       totalFocusMs: rows.reduce((acc, r) => acc + r.durationMs, 0),
       completedWorkSessions: rows.length,
     };
+  }
+  async dailyBreakdownForUser() {
+    // Not used by TimerService — Stats endpoint test would exercise this.
+    return [];
+  }
+  async leaderboard() {
+    return [];
   }
 }
 

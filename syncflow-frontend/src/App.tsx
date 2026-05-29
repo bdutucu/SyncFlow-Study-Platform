@@ -4,6 +4,7 @@ import { AuthPage } from './pages/AuthPage';
 import { LobbyPage } from './pages/LobbyPage';
 import { RoomPage } from './pages/RoomPage';
 import { AdminPage } from './pages/AdminPage';
+import { StatsPage } from './pages/StatsPage';
 import { Shell } from './components/Shell';
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,16 @@ export function App() {
           <Protected>
             <Shell>
               <RoomPage />
+            </Shell>
+          </Protected>
+        }
+      />
+      <Route
+        path="/me"
+        element={
+          <Protected>
+            <Shell>
+              <StatsPage />
             </Shell>
           </Protected>
         }

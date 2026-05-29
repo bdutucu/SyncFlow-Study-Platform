@@ -11,6 +11,8 @@ import { ChatPanel } from '../components/room/ChatPanel';
 import { MediaPanel } from '../components/room/MediaPanel';
 import { ParticipantList } from '../components/room/ParticipantList';
 import { VoicePanel } from '../components/room/VoicePanel';
+import { toast } from '../lib/toast';
+import { chimes } from '../lib/chime';
 
 export function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -74,6 +76,20 @@ export function RoomPage() {
     const onReconnect = () => setConnState('live');
 
     const onTimer = (p: { state: TimerState }) => setTimer(p.state);
+    /**
+     * Server emits phase_completed right BEFORE a natural transition,
+     * carrying the phase that JUST ended. We use that to ring the bell
+     * and announce what's coming next.
+     */
+    const onPhaseCompleted = (p: { completedPhase: 'WORK' | 'SHORT_BREAK' | 'LONG_BREAK' }) => {
+      if (p.completedPhase === 'WORK') {
+        chimes.startBreak();
+        toast.rest('Time for a breather', 'A break has started — stand up, look out the window.');
+      } else {
+        chimes.startWork();
+        toast.work('Back to it', `${p.completedPhase === 'LONG_BREAK' ? 'Long' : 'Short'} rest is over. Pick up where you left off.`);
+      }
+    };
     const onMedia = (p: { state: MediaState }) => setMedia(p.state);
     const onJoined = (p: { member: MemberDTO }) => setMembers((m) => (m.some((x) => x.userId === p.member.userId) ? m : [...m, p.member]));
     const onLeft = (p: { userId: string }) => setMembers((m) => m.filter((x) => x.userId !== p.userId));
@@ -98,6 +114,7 @@ export function RoomPage() {
     s.on('disconnect', onDisconnect);
     s.io.on('reconnect', onReconnect);
     s.on('timer:state_changed', onTimer);
+    s.on('timer:phase_completed', onPhaseCompleted);
     s.on('media:state_changed', onMedia);
     s.on('room:user_joined', onJoined);
     s.on('room:user_left', onLeft);
@@ -112,6 +129,7 @@ export function RoomPage() {
       s.off('disconnect', onDisconnect);
       s.io.off('reconnect', onReconnect);
       s.off('timer:state_changed', onTimer);
+      s.off('timer:phase_completed', onPhaseCompleted);
       s.off('media:state_changed', onMedia);
       s.off('room:user_joined', onJoined);
       s.off('room:user_left', onLeft);

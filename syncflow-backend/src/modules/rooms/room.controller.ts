@@ -59,6 +59,15 @@ export class RoomController {
     }
   };
 
+  myActive = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const room = await this.service.getMyActiveRoom(actor(req));
+      res.status(200).json({ room });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getOne = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const room = await this.service.getRoom(actor(req), req.params.id);

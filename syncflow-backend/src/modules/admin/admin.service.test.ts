@@ -37,6 +37,9 @@ class InMemoryUserRepo implements IUserRepository {
   add(user: User) { this.users.set(user.id, user); }
 
   async findById(id: string) { return this.users.get(id) ?? null; }
+  async findManyByIds(ids: string[]) {
+    return ids.map((id) => this.users.get(id)).filter((u): u is User => !!u);
+  }
   async findByEmail(email: string) {
     return [...this.users.values()].find((u) => u.email === email.toLowerCase()) ?? null;
   }
@@ -148,8 +151,8 @@ class StubRoomRepo implements IRoomRepository {
   async delete(_: string): Promise<void> { /* noop */ }
   async transferHost(_: string, __: string): Promise<Room> { throw new Error('n/a'); }
   async countActiveMembers(_: string) { return 0; }
-  async activateMembership(_: string, __: string) { throw new Error('n/a'); }
-  async closeMembership(_: string, __: string, ___: 'LEFT' | 'KICKED') { throw new Error('n/a'); }
+  async activateMembership(_: string, __: string): Promise<RoomMembership> { throw new Error('n/a'); }
+  async closeMembership(_: string, __: string, ___: 'LEFT' | 'KICKED'): Promise<RoomMembership> { throw new Error('n/a'); }
 }
 
 class RecordingRoomRemover implements IRoomMemberRemover {
