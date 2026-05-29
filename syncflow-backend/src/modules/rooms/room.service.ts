@@ -77,6 +77,17 @@ export class RoomService {
   // ---------------------------------------------------------------- CRUD ----
 
   async createRoom(actor: AuthenticatedUser, input: CreateRoomInput): Promise<RoomDetails> {
+    // Single-active-room rule: createRoom auto-adds the creator as the
+    // host's active member, which would silently land them in two rooms
+    // at once if they already have an active membership. Enforce the
+    // same rule joinRoom enforces (DSD §3.2.2). Admins are exempt — a
+    // moderator may need to open rooms for support without first
+    // leaving their own session.
+    if (actor.role !== UserRole.SYSTEM_ADMIN) {
+      const existingActive = await this.rooms.findActiveMembershipByUser(actor.id);
+      if (existingActive) throw new AlreadyInAnotherRoomError();
+    }
+
     const passwordHash = input.password ? await hashPassword(input.password) : null;
 
     const room = await this.rooms.createWithHostMembership({
@@ -90,6 +101,30 @@ export class RoomService {
 
     // Host is now the sole active member.
     return this.buildRoomDetails(room.id);
+  }
+
+  /**
+   * Returns the caller's currently-active room (if any). Used by the
+   * lobby UI to highlight "you're already here" and surface a leave
+   * shortcut so users don't try to side-step the one-active-room rule.
+   */
+  async getMyActiveRoom(actor: AuthenticatedUser): Promise<RoomSummary | null> {
+    const membership = await this.rooms.findActiveMembershipByUser(actor.id);
+    if (!membership) return null;
+    const room = await this.rooms.findById(membership.roomId);
+    if (!room) return null;
+    const memberCount = await this.rooms.countActiveMembers(room.id);
+    return {
+      id: room.id,
+      name: room.name,
+      description: room.description,
+      hostId: room.hostId,
+      visibility: room.visibility,
+      hasPassword: room.passwordHash !== null,
+      maxParticipants: room.maxParticipants,
+      memberCount,
+      createdAt: room.createdAt.toISOString(),
+    };
   }
 
   async listPublicRooms(query: {

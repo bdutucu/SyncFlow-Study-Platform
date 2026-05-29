@@ -52,6 +52,10 @@ import { VoiceController } from './modules/voice/voice.controller';
 import { buildVoiceRouter } from './modules/voice/voice.routes';
 import { AgoraVoiceTokenIssuer } from './modules/voice/voice.issuer';
 
+import { StatsService } from './modules/stats/stats.service';
+import { StatsController } from './modules/stats/stats.controller';
+import { buildStatsRouter } from './modules/stats/stats.routes';
+
 import { HostReconnectCoordinator } from './modules/rooms/host-reconnect.coordinator';
 
 // ---------------------------------------------------------------------------
@@ -129,6 +133,11 @@ const voiceIssuer = new AgoraVoiceTokenIssuer(
 const voiceService = new VoiceService(roomRepository, voiceIssuer);
 const voiceController = new VoiceController(voiceService);
 
+// Focus statistics dashboard (DSD §3.2.3) — needs userRepository to
+// join usernames onto the leaderboard rows.
+const statsService = new StatsService(focusStatRepository, userRepository);
+const statsController = new StatsController(statsService);
+
 // Host disconnect grace coordinator (DSD §3.5.7)
 const hostReconnect = new HostReconnectCoordinator(
   roomRepository,
@@ -162,6 +171,7 @@ app.use('/api/rooms', buildRoomRouter(roomController));
 app.use('/api', buildChatRouter(chatController));
 app.use('/api/admin', buildAdminRouter(adminController));
 app.use('/api/voice', buildVoiceRouter(voiceController));
+app.use('/api/stats', buildStatsRouter(statsController));
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: { message: 'Not found' } });

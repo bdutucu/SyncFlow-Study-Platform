@@ -12,6 +12,11 @@ export class UserRepository implements IUserRepository {
     return prisma.user.findUnique({ where: { id } });
   }
 
+  findManyByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return prisma.user.findMany({ where: { id: { in: ids } } });
+  }
+
   findByEmail(email: string): Promise<User | null> {
     return prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   }

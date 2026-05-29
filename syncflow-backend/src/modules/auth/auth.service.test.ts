@@ -19,6 +19,9 @@ class InMemoryUserRepo implements IUserRepository {
   async findById(id: string): Promise<User | null> {
     return this.byId.get(id) ?? null;
   }
+  async findManyByIds(ids: string[]): Promise<User[]> {
+    return ids.map((id) => this.byId.get(id)).filter((u): u is User => !!u);
+  }
   async findByEmail(email: string): Promise<User | null> {
     return this.byEmail.get(email.toLowerCase()) ?? null;
   }
@@ -42,6 +45,10 @@ class InMemoryUserRepo implements IUserRepository {
     this.byEmail.set(user.email, user);
     this.byUsername.set(user.username, user);
     return user;
+  }
+  async listUsers() {
+    // Admin listing is covered by admin.service.test.ts; AuthService never calls it.
+    return { items: [], total: 0, page: 1, pageSize: 0 };
   }
   async setBanned(id: string, isBanned: boolean): Promise<User> {
     const u = this.byId.get(id);

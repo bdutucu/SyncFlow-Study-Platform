@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuth } from '../lib/auth-store';
 import { connectSocket, disconnectSocket } from '../lib/socket';
+import { ToastHost } from './ToastHost';
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const user = useAuth((s) => s.user);
@@ -65,6 +66,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <nav className="mt-3 flex items-center gap-5 text-xs font-mono uppercase tracking-[0.18em]">
             <NavTab to="/lobby" active={loc.pathname.startsWith('/lobby')}>Lobby</NavTab>
             <NavTab to="/lobby" active={loc.pathname.startsWith('/rooms')}>Rooms</NavTab>
+            <NavTab to="/me" active={loc.pathname.startsWith('/me')}>Record</NavTab>
             {user.role === 'SYSTEM_ADMIN' && (
               <NavTab to="/admin" active={isAdminRoute}>Moderation</NavTab>
             )}
@@ -78,6 +80,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <span>© SYNCFLOW · CSE3044 Term Project</span>
         <span>Set in Fraunces &amp; JetBrains Mono</span>
       </footer>
+      <ToastHost />
     </div>
   );
 }

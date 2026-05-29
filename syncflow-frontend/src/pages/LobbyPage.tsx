@@ -8,14 +8,19 @@ export function LobbyPage() {
   const user = useAuth((s) => s.user)!;
   const nav = useNavigate();
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  const [activeRoom, setActiveRoom] = useState<RoomSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
     try {
-      const r = await api.get<PagedRooms>('/rooms', { params: { pageSize: 50 } });
-      setRooms(r.data.items);
+      const [listRes, activeRes] = await Promise.all([
+        api.get<PagedRooms>('/rooms', { params: { pageSize: 50 } }),
+        api.get<{ room: RoomSummary | null }>('/rooms/me/active'),
+      ]);
+      setRooms(listRes.data.items);
+      setActiveRoom(activeRes.data.room);
     } catch (e) {
       setErr(errorMessage(e));
     } finally {
@@ -24,6 +29,18 @@ export function LobbyPage() {
   };
 
   useEffect(() => { void refresh(); }, []);
+
+  const leaveActive = async () => {
+    if (!activeRoom) return;
+    if (!confirm(`Leave "${activeRoom.name}"?`)) return;
+    try {
+      await api.post(`/rooms/${activeRoom.id}/leave`);
+      setActiveRoom(null);
+      void refresh();
+    } catch (e) {
+      setErr(errorMessage(e));
+    }
+  };
 
   // Create-room form state
   const [showCreate, setShowCreate] = useState(false);
@@ -36,6 +53,10 @@ export function LobbyPage() {
 
   const createRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeRoom && user.role !== 'SYSTEM_ADMIN') {
+      setErr('You are already in a room. Leave it first to host a new one.');
+      return;
+    }
     setCreating(true);
     setErr(null);
     try {
@@ -74,17 +95,23 @@ export function LobbyPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* HERO */}
-      <section className="grid lg:grid-cols-[1.4fr_1fr] gap-10 mb-12 animate-rise">
+      <section className="grid lg:grid-cols-[1.4fr_1fr] gap-10 mb-10 animate-rise">
         <div>
           <div className="eyebrow mb-3">Today's edition · The Reading Hall</div>
           <h1 className="headline-serif text-5xl sm:text-6xl lg:text-7xl font-black">
             Good {greeting()}, <span className="font-italic italic font-normal">{user.username}</span>.
           </h1>
           <p className="mt-6 text-ink-soft max-w-xl text-lg leading-relaxed">
-            The lamps are lit, the chairs are arranged. Take a free table below — or
-            <button onClick={() => setShowCreate((s) => !s)} className="ml-1 underline underline-offset-4 text-ink hover:text-focus">
-              host one of your own
-            </button>.
+            {activeRoom ? (
+              <>You're already at a table. Return to it below, or settle the bill and try another.</>
+            ) : (
+              <>
+                The lamps are lit, the chairs are arranged. Take a free table below — or
+                <button onClick={() => setShowCreate((s) => !s)} className="ml-1 underline underline-offset-4 text-ink hover:text-focus">
+                  host one of your own
+                </button>.
+              </>
+            )}
           </p>
         </div>
 
@@ -98,6 +125,39 @@ export function LobbyPage() {
           </ol>
         </aside>
       </section>
+
+      {/* ACTIVE ROOM BANNER */}
+      {activeRoom && (
+        <section className="mb-10 animate-rise">
+          <div className="eyebrow mb-2">§ Your table</div>
+          <div className="border-2 border-focus bg-focus/5 px-5 py-4 sm:px-6 sm:py-5">
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-3 justify-between">
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="eyebrow text-focus-deep">in session</span>
+                  {activeRoom.hostId === user.id && <span className="eyebrow">host</span>}
+                  {activeRoom.hasPassword && <span className="eyebrow">🔒 locked</span>}
+                </div>
+                <h3 className="font-display text-2xl sm:text-3xl font-medium mt-1 text-ink">
+                  {activeRoom.name}
+                </h3>
+                {activeRoom.description && (
+                  <p className="font-italic italic text-ink-soft text-sm mt-1 max-w-2xl">
+                    {activeRoom.description}
+                  </p>
+                )}
+                <div className="font-mono text-[10px] tracking-widest text-ink-muted uppercase mt-2 tabular">
+                  {activeRoom.memberCount}/{activeRoom.maxParticipants} seats taken
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => void leaveActive()} className="btn-ghost btn-sm">leave</button>
+                <Link to={`/rooms/${activeRoom.id}`} className="btn-focus btn-sm">return →</Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CREATE PANEL */}
       {showCreate && (
@@ -167,13 +227,25 @@ export function LobbyPage() {
       {/* SECTION TITLE */}
       <div className="flex items-baseline justify-between mb-4">
         <div>
-          <div className="eyebrow">§ 1 · Listings</div>
-          <h2 className="font-display text-3xl mt-1">Rooms in session</h2>
+          <div className="eyebrow">§ {activeRoom ? '2' : '1'} · Listings</div>
+          <h2 className="font-display text-3xl mt-1">Other rooms in session</h2>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => void refresh()} className="btn-ghost btn-sm">refresh</button>
           {!showCreate && (
-            <button onClick={() => setShowCreate(true)} className="btn-ink btn-sm">+ Host room</button>
+            <button
+              onClick={() => {
+                if (activeRoom && user.role !== 'SYSTEM_ADMIN') {
+                  setErr('You are already in a room. Leave it first to host a new one.');
+                  return;
+                }
+                setShowCreate(true);
+              }}
+              className={activeRoom && user.role !== 'SYSTEM_ADMIN' ? 'btn-ghost btn-sm opacity-40 cursor-not-allowed' : 'btn-ink btn-sm'}
+              title={activeRoom && user.role !== 'SYSTEM_ADMIN' ? 'Leave your current room to host a new one' : ''}
+            >
+              + Host room
+            </button>
           )}
         </div>
       </div>
@@ -188,15 +260,28 @@ export function LobbyPage() {
       {/* ROOM LISTINGS */}
       {loading ? (
         <div className="text-ink-muted font-italic italic">Looking through the registry…</div>
-      ) : rooms.length === 0 ? (
-        <EmptyState onCreate={() => setShowCreate(true)} />
-      ) : (
-        <div className="divide-y divide-ink/15 border-t border-b border-ink/20">
-          {rooms.map((r, i) => (
-            <RoomRow key={r.id} room={r} index={i + 1} onJoin={() => void joinRoom(r.id, r.hasPassword)} />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        // Hide the active room from this list — it's already shown in the
+        // banner above. Keeps the listing focused on rooms you might
+        // actually want to switch to (after leaving your current one).
+        const others = rooms.filter((r) => r.id !== activeRoom?.id);
+        if (others.length === 0) {
+          return <EmptyState onCreate={() => setShowCreate(true)} />;
+        }
+        return (
+          <div className="divide-y divide-ink/15 border-t border-b border-ink/20">
+            {others.map((r, i) => (
+              <RoomRow
+                key={r.id}
+                room={r}
+                index={i + 1}
+                blocked={!!activeRoom && user.role !== 'SYSTEM_ADMIN'}
+                onJoin={() => void joinRoom(r.id, r.hasPassword)}
+              />
+            ))}
+          </div>
+        );
+      })()}
 
       {/* DIRECT JOIN BY ID */}
       <DirectJoin onJoin={(id) => void joinRoom(id, false)} />
@@ -208,20 +293,26 @@ function RoomRow({
   room,
   index,
   onJoin,
+  blocked,
 }: {
   room: RoomSummary;
   index: number;
   onJoin: () => void;
+  /** True when the viewer is already in another room — disables join. */
+  blocked: boolean;
 }) {
   const full = room.memberCount >= room.maxParticipants;
+  const disabled = full || blocked;
+  const label = full ? 'full' : blocked ? 'occupied' : 'enter →';
+  const title = blocked && !full ? 'Leave your current room first' : '';
   return (
     <div className="grid grid-cols-[40px_1fr_auto] sm:grid-cols-[60px_1fr_140px_120px] gap-4 items-baseline py-5 group hover:bg-paper-dark/40 transition-colors px-2 -mx-2">
       <div className="font-mono text-xs text-ink-muted tabular">№{String(index).padStart(2, '0')}</div>
       <div>
         <div className="flex items-baseline gap-3 flex-wrap">
-          <Link to={`/rooms/${room.id}`} className="font-display text-xl group-hover:text-focus transition-colors">
+          <span className="font-display text-xl group-hover:text-focus transition-colors">
             {room.name}
-          </Link>
+          </span>
           {room.hasPassword && <span className="eyebrow">🔒 locked</span>}
           {room.visibility === 'PRIVATE' && <span className="eyebrow">private</span>}
         </div>
@@ -237,11 +328,12 @@ function RoomRow({
       </div>
       <div className="justify-self-end">
         <button
-          disabled={full}
+          disabled={disabled}
           onClick={onJoin}
-          className={full ? 'btn-ghost btn-sm opacity-40' : 'btn-ink btn-sm'}
+          title={title}
+          className={disabled ? 'btn-ghost btn-sm opacity-40 cursor-not-allowed' : 'btn-ink btn-sm'}
         >
-          {full ? 'full' : 'enter →'}
+          {label}
         </button>
       </div>
     </div>

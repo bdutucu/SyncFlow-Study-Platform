@@ -14,6 +14,7 @@ export function buildRoomRouter(controller: RoomController): Router {
 
   // Browse / read
   router.get('/', controller.listPublic);
+  router.get('/me/active', controller.myActive);  // MUST precede /:id
   router.get('/:id', controller.getOne);
   router.get('/:id/members', controller.listMembers);
 

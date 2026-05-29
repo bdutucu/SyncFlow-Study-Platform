@@ -31,6 +31,13 @@ export interface PagedUsers {
  */
 export interface IUserRepository {
   findById(id: string): Promise<User | null>;
+  /**
+   * Bulk lookup used when a downstream module already has a set of user
+   * IDs (e.g. the focus-stats leaderboard joining usernames in one
+   * round-trip). Order of the returned array is NOT guaranteed; callers
+   * should index by id.
+   */
+  findManyByIds(ids: string[]): Promise<User[]>;
   findByEmail(email: string): Promise<User | null>;
   findByUsername(username: string): Promise<User | null>;
   create(input: CreateUserInput): Promise<User>;

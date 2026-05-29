@@ -111,3 +111,51 @@ export interface PagedAdminUsers {
   page: number;
   pageSize: number;
 }
+
+export interface VoiceToken {
+  appId: string;
+  channel: string;
+  uid: number;
+  token: string | null;
+  expiresAt: string;
+}
+
+export interface DailyFocusBucket {
+  date: string;     // yyyy-mm-dd (UTC)
+  focusMs: number;
+  sessions: number;
+}
+
+export interface RecentSession {
+  phase: TimerPhase;
+  durationMs: number;
+  startedAt: string;
+  endedAt: string;
+  roomId: string | null;
+}
+
+export interface MyStats {
+  totals: {
+    userId: string;
+    totalFocusMs: number;
+    completedWorkSessions: number;
+    distinctRooms: number;
+  };
+  byDay: DailyFocusBucket[];
+  recent: RecentSession[];
+}
+
+export type LeaderboardPeriod = 'all' | 'week' | 'month';
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  totalFocusMs: number;
+  sessions: number;
+}
+
+export interface Leaderboard {
+  period: LeaderboardPeriod;
+  rows: LeaderboardEntry[];
+}
